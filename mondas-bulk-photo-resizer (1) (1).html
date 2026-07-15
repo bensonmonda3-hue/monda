@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mondas Bulk Photo Resizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#141311;
+    --panel:#1c1a16;
+    --panel-2:#211f1a;
+    --line:#332f27;
+    --cream:#f2ede1;
+    --dim:#9a9184;
+    --amber:#ff7a29;
+    --amber-dim:#7a3f1c;
+    --ok:#7fbf8f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--cream);
+    font-family:'Space Grotesk',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  /* ---- sprocket filmstrip header ---- */
+  .sprockets{
+    display:flex;
+    background:#0e0d0b;
+    height:14px;
+  }
+  .sprockets span{
+    flex:1;
+    margin:3px 4px;
+    background:var(--bg);
+    border-radius:2px;
+  }
+
+  .wrap{max-width:980px;margin:0 auto;padding:0 24px 80px;}
+
+  header{
+    padding:44px 0 28px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:32px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    color:var(--amber);
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  h1{
+    font-size:38px;
+    font-weight:700;
+    margin:0 0 8px;
+    letter-spacing:-0.02em;
+  }
+  header p{
+    color:var(--dim);
+    font-size:15px;
+    max-width:520px;
+    line-height:1.55;
+    margin:0;
+  }
+
+  /* ---- dropzone ---- */
+  #drop{
+    border:1.5px dashed var(--line);
+    border-radius:10px;
+    padding:48px 24px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+    background:var(--panel);
+  }
+  #drop.hover{border-color:var(--amber); background:#20180f;}
+  #drop .icon{font-size:28px;display:block;margin-bottom:10px;opacity:.85;}
+  #drop .main{font-size:16px;font-weight:600;}
+  #drop .sub{color:var(--dim);font-size:13px;margin-top:6px;}
+  #fileInput{display:none;}
+
+  /* ---- settings ---- */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:22px 24px;
+    margin-top:20px;
+  }
+  .panel h2{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:var(--dim);
+    margin:0 0 18px;
+    font-family:'JetBrains Mono',monospace;
+    font-weight:500;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:16px;
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--dim);
+    margin-bottom:6px;
+  }
+  .field input[type=number],
+  .field select{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    padding:9px 10px;
+    border-radius:6px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+  }
+  .field input:focus,.field select:focus{outline:2px solid var(--amber);outline-offset:1px;}
+
+  .row-inline{display:flex;align-items:center;gap:8px;margin-top:4px;}
+  .row-inline input[type=checkbox]{width:15px;height:15px;accent-color:var(--amber);}
+  .row-inline label{font-size:13px;color:var(--cream);}
+
+  .modebar{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;}
+  .mode-btn{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--dim);
+    padding:8px 14px;
+    border-radius:20px;
+    font-size:12.5px;
+    cursor:pointer;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .mode-btn.active{background:var(--amber);border-color:var(--amber);color:#1a0e05;font-weight:600;}
+
+  .quality-row{margin-top:18px;display:none;}
+  .quality-row.show{display:block;}
+  input[type=range]{width:100%;accent-color:var(--amber);}
+
+  /* ---- filmstrip grid ---- */
+  .stripTitle{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin:32px 0 12px;
+  }
+  .stripTitle h2{
+    font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);
+    font-family:'JetBrains Mono',monospace;font-weight:500;margin:0;
+  }
+  .count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--amber);}
+
+  .filmstrip{
+    background:#0e0d0b;
+    border-radius:10px;
+    padding:10px 4px;
+  }
+  .film-inner{
+    max-height:420px;
+    overflow-y:auto;
+    padding:2px 14px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+    gap:10px;
+  }
+  .frame{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    overflow:hidden;
+    position:relative;
+  }
+  .frame img{width:100%;height:90px;object-fit:cover;display:block;background:#000;}
+  .frame .meta{padding:7px 8px 8px;}
+  .frame .fname{
+    font-size:11px;color:var(--cream);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .frame .dims{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;color:var(--dim);margin-top:3px;
+  }
+  .frame .dims .arrow{color:var(--amber);}
+  .frame .remove{
+    position:absolute;top:5px;right:5px;
+    width:20px;height:20px;border-radius:50%;
+    background:rgba(20,19,17,.85);color:var(--cream);
+    border:none;cursor:pointer;font-size:13px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .frame .remove:hover{background:var(--amber);color:#1a0e05;}
+  .frame.done .status{
+    position:absolute;bottom:0;left:0;right:0;
+    background:rgba(15,20,15,.85);
+    color:var(--ok);
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    padding:3px 8px;
+  }
+
+  /* ---- actions ---- */
+  .actions{
+    display:flex;
+    gap:12px;
+    margin-top:24px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .btn{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+    padding:13px 26px;
+    border-radius:7px;
+    border:none;
+    cursor:pointer;
+    transition:transform .1s, opacity .15s;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-primary{background:var(--amber);color:#1a0e05;}
+  .btn-primary:hover:not(:disabled){background:#ff8a45;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--dim);}
+  .btn-ghost:hover:not(:disabled){border-color:var(--amber);color:var(--amber);}
+
+  .progressWrap{
+    flex:1;min-width:200px;
+    display:none;
+  }
+  .progressWrap.show{display:block;}
+  .progressBar{
+    height:8px;background:var(--panel-2);border-radius:4px;overflow:hidden;border:1px solid var(--line);
+  }
+  .progressFill{height:100%;width:0%;background:var(--amber);transition:width .12s;}
+  .progressLabel{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);margin-top:6px;
+  }
+
+  .empty-note{color:var(--dim);font-size:13px;text-align:center;padding:30px 0;}
+
+  footer{
+    margin-top:50px;padding-top:20px;border-top:1px solid var(--line);
+    color:var(--dim);font-size:12px;font-family:'JetBrains Mono',monospace;
+  }
+</style>
+</head>
+<body>
+
+<div class="sprockets">
+  <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">// Mondas Batch Lab</div>
+    <h1>Mondas Bulk Photo Resizer</h1>
+    <p>Drop in a hundred images, set one target size, and export the whole roll as a zip. Everything happens locally in your browser — nothing is uploaded anywhere.</p>
+  </header>
+
+  <div id="drop">
+    <span class="icon">🎞️</span>
+    <div class="main">Drop images here, or click to browse</div>
+    <div class="sub">JPG, PNG, WEBP, GIF — select as many as you like</div>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+  </div>
+
+  <div class="panel">
+    <h2>Output settings</h2>
+
+    <div class="field" style="margin-bottom:18px;">
+      <label for="preset">Preset size</label>
+      <select id="preset">
+        <optgroup label="Custom">
+          <option value="custom" selected>Custom (set below)</option>
+        </optgroup>
+        <optgroup label="ID &amp; passport photos">
+          <option value="207x207|cover">Passport photo — Kenya (5.5×5.5 cm, 207×207)</option>
+          <option value="600x600|cover">Passport photo — US (2×2 in, 600×600)</option>
+          <option value="600x600|cover">Passport photo — India/UK (35×35mm, 600×600)</option>
+          <option value="413x531|cover">Passport photo — US (2×2 in @ low-res, 413×531)</option>
+          <option value="826x1063|cover">Visa photo — 2×2 in @300dpi (826×1063)</option>
+          <option value="600x800|cover">ID card photo — 35×45mm (600×800)</option>
+        </optgroup>
+        <optgroup label="Prints">
+          <option value="1200x1800|cover">Print 4×6 in @300dpi (1200×1800)</option>
+          <option value="1500x2100|cover">Print 5×7 in @300dpi (1500×2100)</option>
+          <option value="2400x3000|cover">Print 8×10 in @300dpi (2400×3000)</option>
+          <option value="2480x3508|fit">A4 @300dpi (2480×3508)</option>
+        </optgroup>
+        <optgroup label="Social &amp; web">
+          <option value="1080x1080|cover">Square post — 1:1 (1080×1080)</option>
+          <option value="1080x1350|cover">Portrait post — 4:5 (1080×1350)</option>
+          <option value="1080x1920|cover">Story / Reel — 9:16 (1080×1920)</option>
+          <option value="1920x1080|cover">Landscape / thumbnail — 16:9 (1920×1080)</option>
+          <option value="800x800|fit">Product thumbnail (800×800)</option>
+        </optgroup>
+        <optgroup label="Ratios only (fit inside 2000px)">
+          <option value="2000x2000|fit">1:1</option>
+          <option value="2000x1333|fit">3:2</option>
+          <option value="1333x2000|fit">2:3</option>
+          <option value="2000x1500|fit">4:3</option>
+          <option value="1500x2000|fit">3:4</option>
+          <option value="2000x1125|fit">16:9</option>
+          <option value="1125x2000|fit">9:16</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="grid">
+      <div class="field">
+        <label for="width">Width (px)</label>
+        <input type="number" id="width" min="1" value="1024">
+      </div>
+      <div class="field">
+        <label for="height">Height (px)</label>
+        <input type="number" id="height" min="1" value="1024">
+      </div>
+      <div class="field">
+        <label for="format">Format</label>
+        <select id="format">
+          <option value="keep">Keep original</option>
+          <option value="image/jpeg">JPEG</option>
+          <option value="image/png">PNG</option>
+          <option value="image/webp">WEBP</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="prefix">Filename suffix</label>
+        <input type="text" id="prefix" value="-resized">
+      </div>
+    </div>
+
+    <div class="row-inline">
+      <input type="checkbox" id="aspect" checked>
+      <label for="aspect">Lock aspect ratio (fit within width × height, no cropping or stretching)</label>
+    </div>
+
+    <div class="modebar" id="modebar">
+      <button class="mode-btn active" data-mode="fit">Fit inside</button>
+      <button class="mode-btn" data-mode="cover">Fill &amp; crop</button>
+      <button class="mode-btn" data-mode="stretch">Stretch exact</button>
+    </div>
+
+    <div class="quality-row" id="qualityRow">
+      <label for="quality" style="font-size:12px;color:var(--dim);">Quality — <span id="qualityVal" class="mono">95</span>%</label>
+      <input type="range" id="quality" min="10" max="100" value="95">
+    </div>
+  </div>
+
+  <div class="stripTitle">
+    <h2>Loaded images</h2>
+    <span class="count mono" id="count">0 frames</span>
+  </div>
+
+  <div class="filmstrip">
+    <div class="film-inner" id="filmInner">
+      <div class="empty-note" id="emptyNote" style="grid-column:1/-1;">No images loaded yet.</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="processBtn" disabled>Resize &amp; download all</button>
+    <button class="btn btn-ghost" id="clearBtn" disabled>Clear all</button>
+    <div class="progressWrap" id="progressWrap">
+      <div class="progressBar"><div class="progressFill" id="progressFill"></div></div>
+      <div class="progressLabel" id="progressLabel">0 / 0 processed</div>
+    </div>
+  </div>
+
+  <footer>Runs entirely client-side · canvas-based resize · zipped with JSZip</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+  const drop = document.getElementById('drop');
+  const fileInput = document.getElementById('fileInput');
+  const filmInner = document.getElementById('filmInner');
+  const emptyNote = document.getElementById('emptyNote');
+  const countEl = document.getElementById('count');
+  const processBtn = document.getElementById('processBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const qualityRow = document.getElementById('qualityRow');
+  const qualityInput = document.getElementById('quality');
+  const qualityVal = document.getElementById('qualityVal');
+  const formatSelect = document.getElementById('format');
+  const modebar = document.getElementById('modebar');
+
+  let mode = 'fit';
+  let items = []; // {id, file, url, w, h, status}
+  let idSeq = 0;
+
+  function updateQualityVisibility(){
+    const fmt = formatSelect.value;
+    const showQuality = fmt === 'image/jpeg' || fmt === 'image/webp' || fmt === 'keep';
+    qualityRow.classList.toggle('show', showQuality);
+  }
+  formatSelect.addEventListener('change', updateQualityVisibility);
+  updateQualityVisibility();
+
+  qualityInput.addEventListener('input', () => qualityVal.textContent = qualityInput.value);
+
+  function setMode(newMode){
+    mode = newMode;
+    [...modebar.children].forEach(c => c.classList.toggle('active', c.dataset.mode === newMode));
+    document.getElementById('aspect').disabled = (mode !== 'fit');
+  }
+
+  modebar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.mode-btn');
+    if(!btn) return;
+    setMode(btn.dataset.mode);
+    presetSelect.value = 'custom';
+  });
+
+  const presetSelect = document.getElementById('preset');
+  const widthInput = document.getElementById('width');
+  const heightInput = document.getElementById('height');
+
+  presetSelect.addEventListener('change', () => {
+    const val = presetSelect.value;
+    if(val === 'custom') return;
+    const [dims, presetMode] = val.split('|');
+    const [w, h] = dims.split('x');
+    widthInput.value = w;
+    heightInput.value = h;
+    setMode(presetMode);
+    if(presetMode === 'cover' || presetMode === 'fit'){
+      document.getElementById('aspect').checked = true;
+    }
+  });
+
+  [widthInput, heightInput].forEach(inp => {
+    inp.addEventListener('input', () => { presetSelect.value = 'custom'; });
+  });
+
+  drop.addEventListener('click', () => fileInput.click());
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('hover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('hover'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('hover');
+    handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+  function handleFiles(fileList){
+    const files = [...fileList].filter(f => f.type.startsWith('image/'));
+    files.forEach(file => {
+      const id = idSeq++;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const rec = items.find(it => it.id === id);
+        if(rec){ rec.w = img.naturalWidth; rec.h = img.naturalHeight; renderFrame(rec); }
+      };
+      img.src = url;
+      items.push({id, file, url, w:null, h:null, status:'pending'});
+    });
+    render();
+  }
+
+  function render(){
+    emptyNote.style.display = items.length ? 'none' : 'block';
+    countEl.textContent = items.length + ' frame' + (items.length===1?'':'s');
+    processBtn.disabled = items.length === 0;
+    clearBtn.disabled = items.length === 0;
+    filmInner.querySelectorAll('.frame').forEach(el => el.remove());
+    items.forEach(renderFrame);
+  }
+
+  function renderFrame(rec){
+    let el = document.getElementById('frame-'+rec.id);
+    if(!el){
+      el = document.createElement('div');
+      el.className = 'frame';
+      el.id = 'frame-'+rec.id;
+      el.innerHTML = `
+        <img src="${rec.url}" alt="">
+        <button class="remove" title="Remove">×</button>
+        <div class="meta">
+          <div class="fname">${escapeHtml(rec.file.name)}</div>
+          <div class="dims mono">${rec.w?rec.w+'×'+rec.h:'…'}</div>
+        </div>`;
+      el.querySelector('.remove').addEventListener('click', () => {
+        items = items.filter(it => it.id !== rec.id);
+        el.remove();
+        render();
+      });
+      filmInner.appendChild(el);
+    } else if(rec.w){
+      el.querySelector('.dims').textContent = rec.w+'×'+rec.h;
+    }
+  }
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  clearBtn.addEventListener('click', () => {
+    items.forEach(it => URL.revokeObjectURL(it.url));
+    items = [];
+    render();
+  });
+
+  function computeTargetDims(srcW, srcH, targetW, targetH){
+    const lockAspect = document.getElementById('aspect').checked;
+    if(mode === 'stretch' || (!lockAspect && mode==='fit')){
+      return {w: targetW, h: targetH, sx:0, sy:0, sw:srcW, sh:srcH, dw:targetW, dh:targetH};
+    }
+    if(mode === 'cover'){
+      const scale = Math.max(targetW/srcW, targetH/srcH);
+      const cropW = targetW/scale, cropH = targetH/scale;
+      const sx = (srcW - cropW)/2;
+      // Bias the vertical crop toward the top of the photo instead of dead-centering it.
+      // Portrait/ID photos usually have the head near the top and shoulders/chest below,
+      // so centering the crop tends to slice off the top of the head. Using ~20% from the
+      // top (instead of 50%) keeps the head fully in frame in the vast majority of shots.
+      const maxSy = srcH - cropH;
+      const sy = Math.max(0, Math.min(maxSy, maxSy * 0.2));
+      return {w: targetW, h: targetH, sx, sy, sw:cropW, sh:cropH, dw:targetW, dh:targetH};
+    }
+    // fit inside, preserve aspect
+    const scale = Math.min(targetW/srcW, targetH/srcH);
+    const outW = Math.max(1, Math.round(srcW*scale));
+    const outH = Math.max(1, Math.round(srcH*scale));
+    return {w: outW, h: outH, sx:0, sy:0, sw:srcW, sh:srcH, dw:outW, dh:outH};
+  }
+
+  function resizeOne(rec, targetW, targetH, outFormat, quality){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const dims = computeTargetDims(img.naturalWidth, img.naturalHeight, targetW, targetH);
+        const canvas = document.createElement('canvas');
+        canvas.width = dims.w;
+        canvas.height = dims.h;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        if(outFormat === 'image/jpeg'){
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0,0,dims.w,dims.h);
+        }
+        ctx.drawImage(img, dims.sx, dims.sy, dims.sw, dims.sh, 0, 0, dims.dw, dims.dh);
+
+        let mime = outFormat;
+        if(mime === 'keep'){
+          mime = rec.file.type && rec.file.type.startsWith('image/') ? rec.file.type : 'image/png';
+          if(mime === 'image/gif') mime = 'image/png';
+        }
+        const q = (mime === 'image/jpeg' || mime === 'image/webp') ? quality/100 : undefined;
+        canvas.toBlob(blob => {
+          if(!blob){ reject(new Error('toBlob failed')); return; }
+          resolve({blob, mime, w: dims.w, h: dims.h});
+        }, mime, q);
+      };
+      img.onerror = reject;
+      img.src = rec.url;
+    });
+  }
+
+  function extFor(mime){
+    return {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[mime] || 'jpg';
+  }
+
+  function baseName(name){
+    const idx = name.lastIndexOf('.');
+    return idx > 0 ? name.slice(0, idx) : name;
+  }
+
+  processBtn.addEventListener('click', async () => {
+    if(items.length === 0) return;
+    processBtn.disabled = true;
+    clearBtn.disabled = true;
+    progressWrap.classList.add('show');
+
+    const targetW = Math.max(1, parseInt(document.getElementById('width').value, 10) || 1024);
+    const targetH = Math.max(1, parseInt(document.getElementById('height').value, 10) || 1024);
+    const outFormat = formatSelect.value;
+    const quality = parseInt(qualityInput.value, 10);
+    const suffix = document.getElementById('prefix').value || '';
+
+    const zip = new JSZip();
+    let done = 0;
+    const total = items.length;
+
+    for(const rec of items){
+      try{
+        const result = await resizeOne(rec, targetW, targetH, outFormat, quality);
+        const fname = baseName(rec.file.name) + suffix + '.' + extFor(result.mime);
+        zip.file(fname, result.blob);
+        const el = document.getElementById('frame-'+rec.id);
+        if(el){
+          el.classList.add('done');
+          const status = document.createElement('div');
+          status.className = 'status mono';
+          status.textContent = result.w+'×'+result.h;
+          el.appendChild(status);
+        }
+      } catch(err){
+        console.error('Failed to process', rec.file.name, err);
+      }
+      done++;
+      const pct = Math.round((done/total)*100);
+      progressFill.style.width = pct + '%';
+      progressLabel.textContent = done + ' / ' + total + ' processed';
+      // yield to keep UI responsive on large batches
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    progressLabel.textContent = 'Zipping ' + total + ' files…';
+    const content = await zip.generateAsync({type:'blob'}, meta => {
+      progressFill.style.width = Math.round(meta.percent) + '%';
+    });
+    const zipUrl = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = zipUrl;
+    a.download = 'resized-images.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(zipUrl), 4000);
+
+    progressLabel.textContent = 'Done — ' + total + ' images zipped and downloaded';
+    processBtn.disabled = false;
+    clearBtn.disabled = false;
+  });
+
+  document.getElementById('aspect').disabled = false;
+})();
+</script>
+</body>
+</html>
